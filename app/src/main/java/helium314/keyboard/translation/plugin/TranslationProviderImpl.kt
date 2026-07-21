@@ -54,19 +54,40 @@ class TranslationProviderImpl : ITranslationProvider {
     }
 
     private fun mapLanguageToCode(lang: String): String {
-        val lower = lang.lowercase().trim()
+        val clean = lang.lowercase().trim()
+        // If already a short 2-3 letter ISO code, use directly
+        if (clean.length in 2..3 && clean.all { it.isLetter() }) {
+            return clean
+        }
         return when {
-            lower.contains("spanish") || lower == "es" -> "es"
-            lower.contains("french") || lower == "fr" -> "fr"
-            lower.contains("german") || lower == "de" -> "de"
-            lower.contains("chinese") || lower == "zh" -> "zh-CN"
-            lower.contains("japanese") || lower == "ja" -> "ja"
-            lower.contains("korean") || lower == "ko" -> "ko"
-            lower.contains("russian") || lower == "ru" -> "ru"
-            lower.contains("italian") || lower == "it" -> "it"
-            lower.contains("portuguese") || lower == "pt" -> "pt"
-            lower.contains("hindi") || lower == "hi" -> "hi"
-            lower.contains("arabic") || lower == "ar" -> "ar"
+            clean.contains("malayalam") || clean == "ml" -> "ml"
+            clean.contains("hindi") || clean == "hi" -> "hi"
+            clean.contains("tamil") || clean == "ta" -> "ta"
+            clean.contains("telugu") || clean == "te" -> "te"
+            clean.contains("kannada") || clean == "kn" -> "kn"
+            clean.contains("bengali") || clean == "bn" -> "bn"
+            clean.contains("marathi") || clean == "mr" -> "mr"
+            clean.contains("gujarati") || clean == "gu" -> "gu"
+            clean.contains("punjabi") || clean == "pa" -> "pa"
+            clean.contains("spanish") || clean == "es" -> "es"
+            clean.contains("french") || clean == "fr" -> "fr"
+            clean.contains("german") || clean == "de" -> "de"
+            clean.contains("chinese") || clean == "zh" -> "zh-CN"
+            clean.contains("japanese") || clean == "ja" -> "ja"
+            clean.contains("korean") || clean == "ko" -> "ko"
+            clean.contains("russian") || clean == "ru" -> "ru"
+            clean.contains("italian") || clean == "it" -> "it"
+            clean.contains("portuguese") || clean == "pt" -> "pt"
+            clean.contains("arabic") || clean == "ar" -> "ar"
+            clean.contains("turkish") || clean == "tr" -> "tr"
+            clean.contains("dutch") || clean == "nl" -> "nl"
+            clean.contains("polish") || clean == "pl" -> "pl"
+            clean.contains("swedish") || clean == "sv" -> "sv"
+            clean.contains("greek") || clean == "el" -> "el"
+            clean.contains("hebrew") || clean == "he" -> "he"
+            clean.contains("thai") || clean == "th" -> "th"
+            clean.contains("vietnamese") || clean == "vi" -> "vi"
+            clean.contains("indonesian") || clean == "id" -> "id"
             else -> "en"
         }
     }
