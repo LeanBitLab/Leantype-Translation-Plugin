@@ -54,42 +54,89 @@ class TranslationProviderImpl : ITranslationProvider {
     }
 
     private fun mapLanguageToCode(lang: String): String {
-        val clean = lang.lowercase().trim()
-        // If already a short 2-3 letter ISO code, use directly
+        val clean = lang.trim().lowercase()
+        if (clean.isBlank()) return "en"
+
+        val explicitMap = mapOf(
+            "malay" to "ms",
+            "malayalam" to "ml",
+            "hindi" to "hi",
+            "tamil" to "ta",
+            "telugu" to "te",
+            "kannada" to "kn",
+            "bengali" to "bn",
+            "marathi" to "mr",
+            "gujarati" to "gu",
+            "punjabi" to "pa",
+            "spanish" to "es",
+            "french" to "fr",
+            "german" to "de",
+            "chinese" to "zh-CN",
+            "japanese" to "ja",
+            "korean" to "ko",
+            "russian" to "ru",
+            "italian" to "it",
+            "portuguese" to "pt",
+            "arabic" to "ar",
+            "turkish" to "tr",
+            "dutch" to "nl",
+            "polish" to "pl",
+            "swedish" to "sv",
+            "greek" to "el",
+            "hebrew" to "he",
+            "thai" to "th",
+            "vietnamese" to "vi",
+            "indonesian" to "id",
+            "tagalog" to "tl",
+            "esperanto" to "eo",
+            "latin" to "la",
+            "sanskrit" to "sa",
+            "swahili" to "sw"
+        )
+
+        explicitMap[clean]?.let { return it }
+
+        // 1. If 2-3 letter ISO code, use directly
         if (clean.length in 2..3 && clean.all { it.isLetter() }) {
             return clean
         }
-        return when {
-            clean.contains("malayalam") || clean == "ml" -> "ml"
-            clean.contains("hindi") || clean == "hi" -> "hi"
-            clean.contains("tamil") || clean == "ta" -> "ta"
-            clean.contains("telugu") || clean == "te" -> "te"
-            clean.contains("kannada") || clean == "kn" -> "kn"
-            clean.contains("bengali") || clean == "bn" -> "bn"
-            clean.contains("marathi") || clean == "mr" -> "mr"
-            clean.contains("gujarati") || clean == "gu" -> "gu"
-            clean.contains("punjabi") || clean == "pa" -> "pa"
-            clean.contains("spanish") || clean == "es" -> "es"
-            clean.contains("french") || clean == "fr" -> "fr"
-            clean.contains("german") || clean == "de" -> "de"
-            clean.contains("chinese") || clean == "zh" -> "zh-CN"
-            clean.contains("japanese") || clean == "ja" -> "ja"
-            clean.contains("korean") || clean == "ko" -> "ko"
-            clean.contains("russian") || clean == "ru" -> "ru"
-            clean.contains("italian") || clean == "it" -> "it"
-            clean.contains("portuguese") || clean == "pt" -> "pt"
-            clean.contains("arabic") || clean == "ar" -> "ar"
-            clean.contains("turkish") || clean == "tr" -> "tr"
-            clean.contains("dutch") || clean == "nl" -> "nl"
-            clean.contains("polish") || clean == "pl" -> "pl"
-            clean.contains("swedish") || clean == "sv" -> "sv"
-            clean.contains("greek") || clean == "el" -> "el"
-            clean.contains("hebrew") || clean == "he" -> "he"
-            clean.contains("thai") || clean == "th" -> "th"
-            clean.contains("vietnamese") || clean == "vi" -> "vi"
-            clean.contains("indonesian") || clean == "id" -> "id"
-            else -> "en"
+
+        // 2. Exact match against Locales
+        for (locale in java.util.Locale.getAvailableLocales()) {
+            val iso = locale.language
+            if (iso.isBlank() || iso.length !in 2..3) continue
+
+            val displayEn = locale.getDisplayLanguage(java.util.Locale.ENGLISH).lowercase()
+            val displayNative = locale.displayLanguage.lowercase()
+
+            if (displayEn == clean || displayNative == clean) {
+                return iso
+            }
         }
+
+        // 3. Prefix match against Locales
+        for (locale in java.util.Locale.getAvailableLocales()) {
+            val iso = locale.language
+            if (iso.isBlank() || iso.length !in 2..3) continue
+
+            val displayEn = locale.getDisplayLanguage(java.util.Locale.ENGLISH).lowercase()
+            if (displayEn.startsWith(clean)) {
+                return iso
+            }
+        }
+
+        // 4. Substring match against Locales
+        for (locale in java.util.Locale.getAvailableLocales()) {
+            val iso = locale.language
+            if (iso.isBlank() || iso.length !in 2..3) continue
+
+            val displayEn = locale.getDisplayLanguage(java.util.Locale.ENGLISH).lowercase()
+            if (displayEn.contains(clean)) {
+                return iso
+            }
+        }
+
+        return clean.take(2)
     }
 
     private fun parseGoogleTranslateResponse(jsonStr: String): String? {
