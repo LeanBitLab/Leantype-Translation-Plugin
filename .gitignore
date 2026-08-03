@@ -40,3 +40,10 @@ signing.properties
 
 # Logs
 *.log
+
+# Native CXX build & Environment
+.cxx/
+app/.cxx/
+.env
+.venv/
+
