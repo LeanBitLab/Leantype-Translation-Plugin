@@ -19,11 +19,14 @@ To build the APK, run the following Gradle task:
 The compiled APK will be generated at:
 `app/build/outputs/apk/release/translation_plugin.apk`
 
-## Installation
+## Installation & Usage
 
-1. Copy the built `translation_plugin.apk` to your Android device.
-2. In LeanType Settings, go to **Libraries** > **Load translation plugin**.
-3. Select the APK using the file picker.
+> [!IMPORTANT]
+> **Do NOT install this APK directly on your device.** This is a dynamic plugin module, not a standalone app.
+
+1. Copy the built `translation_plugin.apk` to your Android device (or Downloads folder).
+2. Open **LeanType Settings**, go to **Libraries** > **Load translation plugin**.
+3. Select `translation_plugin.apk` using the system file picker.
 
 ## License
 
