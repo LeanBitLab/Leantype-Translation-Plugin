@@ -22,21 +22,23 @@ android {
     }
 
     signingConfigs {
-        release {
-            if (keystorePropertiesFile.exists()) {
-                storeFile file(keystoreProperties.getProperty("storeFile"))
-                storePassword keystoreProperties.getProperty("storePassword")
-                keyAlias keystoreProperties.getProperty("keyAlias")
-                keyPassword keystoreProperties.getProperty("keyPassword")
+        if (keystorePropertiesFile.exists() && keystoreProperties['storeFile'] != null && rootProject.file(keystoreProperties['storeFile']).exists()) {
+            release {
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+                storeFile rootProject.file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
             }
         }
     }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (keystorePropertiesFile.exists() && keystoreProperties['storeFile'] != null && rootProject.file(keystoreProperties['storeFile']).exists()) {
+                signingConfig signingConfigs.release
+            }
         }
     }
     compileOptions {
