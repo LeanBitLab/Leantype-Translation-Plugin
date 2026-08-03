@@ -1,12 +1,12 @@
 # LeanType Translation Plugin
 
-This is a dynamic plugin APK for **LeanType** keyboard that enables inline text translation support.
+This is a dynamic plugin APK for **LeanType** keyboard that enables inline text translation support using **Google Translate**.
 
 ## How it works
 
-LeanType keyboard is a free and open-source (FOSS) project licensed under GPLv3. To enable real-time inline text translation without adding extra overhead or external network dependencies directly into the main keyboard codebase, this plugin isolates the translation provider logic into a separate, dynamically loaded APK.
+LeanType keyboard is a free and open-source (FOSS) project licensed under GPLv3. To enable real-time inline text translation using Google Translate without adding external network dependencies directly into the main keyboard codebase, this plugin isolates the translation provider logic into a separate, dynamically loaded APK.
 
-At runtime, LeanType loads this plugin dynamically via `DexClassLoader` when enabled by the user in settings.
+At runtime, LeanType loads this plugin dynamically via `DexClassLoader` when enabled by the user in settings. The plugin handles language detection/mapping and fetches real-time translations via Google Translate.
 
 ## Building the APK
 
