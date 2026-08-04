@@ -24,23 +24,20 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
+      - name: Decode Keystore
+        env:
+          RELEASE_KEYSTORE: ${{ secrets.RELEASE_KEYSTORE }}
+        if: ${{ env.RELEASE_KEYSTORE != '' }}
+        run: |
+          echo "${{ secrets.RELEASE_KEYSTORE }}" | base64 -d > plugin-release.jks
+          echo "keyAlias=${{ secrets.RELEASE_KEY_ALIAS }}" > keystore.properties
+          echo "keyPassword=${{ secrets.RELEASE_KEY_PASSWORD }}" >> keystore.properties
+          echo "storeFile=plugin-release.jks" >> keystore.properties
+          echo "storePassword=${{ secrets.RELEASE_STORE_PASSWORD }}" >> keystore.properties
+
       - name: Make Gradle executable
         run: chmod +x ./gradlew
         continue-on-error: true
-
-      - name: Decode Keystore (Optional)
-        if: ${{ env.KEYSTORE_BASE64 != '' }}
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
-        run: |
-          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > plugin-release.jks
-          ls -la plugin-release.jks
-          ALIAS="${KEY_ALIAS:-plugin}"
-          printf "keyAlias=%s\nkeyPassword=%s\nstoreFile=plugin-release.jks\nstorePassword=%s\n" "$ALIAS" "$KEY_PASSWORD" "$STORE_PASSWORD" > keystore.properties
-          keytool -list -keystore plugin-release.jks -storepass "$STORE_PASSWORD"
 
       - name: Build Release APK
         run: ./gradlew :app:assembleRelease
