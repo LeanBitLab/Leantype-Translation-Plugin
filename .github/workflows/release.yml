@@ -37,7 +37,8 @@ jobs:
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
         run: |
           echo "$KEYSTORE_BASE64" | base64 --decode > plugin-release.jks
-          printf "keyAlias=%s\nkeyPassword=%s\nstoreFile=plugin-release.jks\nstorePassword=%s\n" "$KEY_ALIAS" "$KEY_PASSWORD" "$STORE_PASSWORD" > keystore.properties
+          ALIAS="${KEY_ALIAS:-plugin}"
+          printf "keyAlias=%s\nkeyPassword=%s\nstoreFile=plugin-release.jks\nstorePassword=%s\n" "$ALIAS" "$KEY_PASSWORD" "$STORE_PASSWORD" > keystore.properties
 
       - name: Build Release APK
         run: ./gradlew :app:assembleRelease
