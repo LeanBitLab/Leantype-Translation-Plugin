@@ -13,7 +13,7 @@ class TranslationProviderImpl : ITranslationProvider {
     private var initialized = false
     private var mlKitBridge: Any? = null
 
-    override fun getInterfaceVersion(): Int = 1
+    override fun getInterfaceVersion(): Int = 2
 
     override fun init(context: Context) {
         this.appContext = context.applicationContext
@@ -34,10 +34,19 @@ class TranslationProviderImpl : ITranslationProvider {
         val langCode = mapLanguageToCode(targetLang)
         val sourceCode = if (sourceLang == "auto" || sourceLang.isBlank()) "en" else mapLanguageToCode(sourceLang)
 
-        // 1. Tier 1: Try on-device ML Kit if model is downloaded
-        val mlResult = tryMlKitViaReflection(text, sourceCode, langCode)
-        if (!mlResult.isNullOrBlank()) {
-            return mlResult
+        val prefs = appContext?.let { android.preference.PreferenceManager.getDefaultSharedPreferences(it) }
+            ?: appContext?.getSharedPreferences(appContext?.packageName + "_preferences", Context.MODE_PRIVATE)
+        val mode = prefs?.getString("pref_translation_mode", "auto") ?: "auto"
+
+        // 1. Tier 1: Try on-device ML Kit if allowed by mode
+        if (mode != "online_only") {
+            val mlResult = tryMlKitViaReflection(text, sourceCode, langCode)
+            if (!mlResult.isNullOrBlank()) {
+                return mlResult
+            }
+            if (mode == "offline_only") {
+                throw java.io.IOException("Offline model not downloaded. Download in Settings.")
+            }
         }
 
         // 2. Tier 2: Official Google Chrome Extension translation endpoint (clean, fast, avoids 429 rate limit)
@@ -49,6 +58,50 @@ class TranslationProviderImpl : ITranslationProvider {
         }
 
         throw java.io.IOException("Translation returned empty result")
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    override fun getSupportedLanguages(): List<String> {
+        val bridge = mlKitBridge ?: return emptyList()
+        return try {
+            val method = bridge.javaClass.getMethod("getSupportedLanguages")
+            method.invoke(bridge) as? List<String> ?: emptyList()
+        } catch (_: Throwable) {
+            emptyList()
+        }
+    }
+
+    override fun isModelDownloaded(langCode: String): Boolean {
+        val bridge = mlKitBridge ?: return false
+        return try {
+            val method = bridge.javaClass.getMethod("isModelDownloaded", String::class.java)
+            method.invoke(bridge, langCode) as? Boolean ?: false
+        } catch (_: Throwable) {
+            false
+        }
+    }
+
+    override fun downloadModel(langCode: String, onComplete: (Boolean) -> Unit) {
+        val bridge = mlKitBridge ?: run {
+            onComplete(false)
+            return
+        }
+        try {
+            val method = bridge.javaClass.getMethod("downloadModel", String::class.java, Function1::class.java)
+            method.invoke(bridge, langCode, onComplete)
+        } catch (_: Throwable) {
+            onComplete(false)
+        }
+    }
+
+    override fun deleteModel(langCode: String): Boolean {
+        val bridge = mlKitBridge ?: return false
+        return try {
+            val method = bridge.javaClass.getMethod("deleteModel", String::class.java)
+            method.invoke(bridge, langCode) as? Boolean ?: false
+        } catch (_: Throwable) {
+            false
+        }
     }
 
     private fun tryMlKitViaReflection(text: String, sourceTag: String, targetTag: String): String? {

@@ -61,6 +61,50 @@ class MlKitTranslatorBridge(private val context: Context) {
         }
     }
 
+    fun getSupportedLanguages(): List<String> {
+        return try {
+            TranslateLanguage.getAllLanguages().toList()
+        } catch (_: Throwable) {
+            emptyList()
+        }
+    }
+
+    fun isModelDownloaded(langCode: String): Boolean {
+        val tag = TranslateLanguage.fromLanguageTag(langCode) ?: langCode
+        return checkModelReady(tag)
+    }
+
+    fun downloadModel(langCode: String, onComplete: (Boolean) -> Unit) {
+        val tag = TranslateLanguage.fromLanguageTag(langCode) ?: langCode
+        if (tag == "en") {
+            onComplete(true)
+            return
+        }
+        val model = TranslateRemoteModel.Builder(tag).build()
+        val conditions = DownloadConditions.Builder().build()
+        RemoteModelManager.getInstance().download(model, conditions)
+            .addOnSuccessListener {
+                modelReady[tag] = true
+                onComplete(true)
+            }
+            .addOnFailureListener {
+                modelReady[tag] = false
+                onComplete(false)
+            }
+    }
+
+    fun deleteModel(langCode: String): Boolean {
+        val tag = TranslateLanguage.fromLanguageTag(langCode) ?: langCode
+        return try {
+            val model = TranslateRemoteModel.Builder(tag).build()
+            Tasks.await(RemoteModelManager.getInstance().deleteDownloadedModel(model), 1, TimeUnit.SECONDS)
+            modelReady[tag] = false
+            true
+        } catch (_: Throwable) {
+            false
+        }
+    }
+
     private fun isReady(sourceTag: String, targetTag: String): Boolean {
         val srcReady = sourceTag == "en" || checkModelReady(sourceTag)
         val tgtReady = targetTag == "en" || checkModelReady(targetTag)
