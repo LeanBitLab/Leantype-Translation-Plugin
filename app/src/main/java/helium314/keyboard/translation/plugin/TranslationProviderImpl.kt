@@ -26,21 +26,14 @@ class TranslationProviderImpl : ITranslationProvider {
         val langCode = mapLanguageToCode(targetLang)
         val encodedText = URLEncoder.encode(text, "UTF-8")
         
-        // 1. Primary: clients5.google.com with dict-chrome-ex (official extension endpoint)
-        try {
-            val primaryUrl = "https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=$sourceLang&tl=$langCode&q=$encodedText"
-            val result = executeRequest(primaryUrl)
-            if (!result.isNullOrBlank()) return result
-        } catch (_: Throwable) {
-            // Fall through to secondary endpoint
+        // Official Google Chrome Extension translation endpoint (clean, fast, avoids 429 rate limit)
+        val urlStr = "https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=$sourceLang&tl=$langCode&q=$encodedText"
+        val result = executeRequest(urlStr)
+        if (!result.isNullOrBlank()) {
+            return result
         }
 
-        // 2. Secondary Fallback: translate.googleapis.com with gtx
-        val secondaryUrl = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=$sourceLang&tl=$langCode&dt=t&q=$encodedText"
-        val result = executeRequest(secondaryUrl)
-        if (!result.isNullOrBlank()) return result
-
-        throw java.io.IOException("Translation failed on all endpoints")
+        throw java.io.IOException("Translation returned empty result")
     }
 
     private fun executeRequest(urlStr: String): String? {
