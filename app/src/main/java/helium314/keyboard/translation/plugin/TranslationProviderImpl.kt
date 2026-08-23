@@ -23,28 +23,34 @@ class TranslationProviderImpl : ITranslationProvider {
 
     override fun translate(text: String, targetLang: String, sourceLang: String): String {
         if (text.isBlank()) return text
-        return try {
-            val langCode = mapLanguageToCode(targetLang)
-            val encodedText = URLEncoder.encode(text, "UTF-8")
-            val urlStr = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=$sourceLang&tl=$langCode&dt=t&q=$encodedText"
-            
-            val url = URL(urlStr)
-            val conn = url.openConnection() as HttpURLConnection
+        val langCode = mapLanguageToCode(targetLang)
+        val encodedText = URLEncoder.encode(text, "UTF-8")
+        val urlStr = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=$sourceLang&tl=$langCode&dt=t&q=$encodedText"
+        
+        val url = URL(urlStr)
+        val conn = url.openConnection() as HttpURLConnection
+        try {
             conn.requestMethod = "GET"
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0")
-            conn.connectTimeout = 5000
-            conn.readTimeout = 5000
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
+            conn.setRequestProperty("Accept", "application/json, text/plain, */*")
+            conn.setRequestProperty("Accept-Language", "en-US,en;q=0.9")
+            conn.connectTimeout = 15000
+            conn.readTimeout = 20000
             conn.connect()
 
-            if (conn.responseCode == 200) {
+            val responseCode = conn.responseCode
+            if (responseCode == 200) {
                 val responseStr = conn.inputStream.bufferedReader().use { it.readText() }
-                parseGoogleTranslateResponse(responseStr) ?: text
+                val translated = parseGoogleTranslateResponse(responseStr)
+                if (translated.isNullOrBlank()) {
+                    throw java.io.IOException("Failed to parse translation response")
+                }
+                return translated
             } else {
-                text
+                throw java.io.IOException("Translation HTTP error: $responseCode")
             }
-        } catch (e: Throwable) {
-            e.printStackTrace()
-            text
+        } finally {
+            conn.disconnect()
         }
     }
 
@@ -58,40 +64,66 @@ class TranslationProviderImpl : ITranslationProvider {
         if (clean.isBlank()) return "en"
 
         val explicitMap = mapOf(
-            "malay" to "ms",
-            "malayalam" to "ml",
-            "hindi" to "hi",
-            "tamil" to "ta",
-            "telugu" to "te",
-            "kannada" to "kn",
-            "bengali" to "bn",
-            "marathi" to "mr",
-            "gujarati" to "gu",
-            "punjabi" to "pa",
+            "english" to "en",
             "spanish" to "es",
             "french" to "fr",
             "german" to "de",
-            "chinese" to "zh-CN",
-            "japanese" to "ja",
-            "korean" to "ko",
-            "russian" to "ru",
             "italian" to "it",
             "portuguese" to "pt",
+            "chinese" to "zh-CN",
+            "chinese (simplified)" to "zh-CN",
+            "chinese (traditional)" to "zh-TW",
+            "japanese" to "ja",
+            "korean" to "ko",
             "arabic" to "ar",
-            "turkish" to "tr",
+            "russian" to "ru",
+            "hindi" to "hi",
+            "bengali" to "bn",
+            "indonesian" to "id",
             "dutch" to "nl",
+            "turkish" to "tr",
             "polish" to "pl",
+            "ukrainian" to "uk",
             "swedish" to "sv",
+            "danish" to "da",
+            "norwegian" to "no",
+            "finnish" to "fi",
             "greek" to "el",
             "hebrew" to "he",
             "thai" to "th",
             "vietnamese" to "vi",
-            "indonesian" to "id",
+            "tamil" to "ta",
+            "telugu" to "te",
+            "marathi" to "mr",
+            "gujarati" to "gu",
+            "kannada" to "kn",
+            "malayalam" to "ml",
+            "urdu" to "ur",
+            "persian" to "fa",
+            "farsi" to "fa",
+            "persian (farsi)" to "fa",
+            "swahili" to "sw",
+            "romanian" to "ro",
+            "czech" to "cs",
+            "hungarian" to "hu",
+            "filipino" to "tl",
             "tagalog" to "tl",
+            "filipino (tagalog)" to "tl",
+            "malay" to "ms",
+            "serbian" to "sr",
+            "croatian" to "hr",
+            "bulgarian" to "bg",
+            "slovak" to "sk",
+            "slovenian" to "sl",
+            "lithuanian" to "lt",
+            "latvian" to "lv",
+            "estonian" to "et",
+            "catalan" to "ca",
+            "basque" to "eu",
+            "punjabi" to "pa",
             "esperanto" to "eo",
             "latin" to "la",
-            "sanskrit" to "sa",
-            "swahili" to "sw"
+            "sanskrit" to "sa"
         )
 
         explicitMap[clean]?.let { return it }
@@ -142,13 +174,17 @@ class TranslationProviderImpl : ITranslationProvider {
     private fun parseGoogleTranslateResponse(jsonStr: String): String? {
         return try {
             val outerArray = JSONArray(jsonStr)
-            val sentencesArray = outerArray.getJSONArray(0)
+            val sentencesArray = outerArray.optJSONArray(0) ?: return null
             val sb = StringBuilder()
             for (i in 0 until sentencesArray.length()) {
-                val sentence = sentencesArray.getJSONArray(i)
-                sb.append(sentence.getString(0))
+                val sentence = sentencesArray.optJSONArray(i) ?: continue
+                val part = sentence.optString(0, "")
+                if (part.isNotEmpty()) {
+                    sb.append(part)
+                }
             }
-            sb.toString()
+            val res = sb.toString()
+            if (res.isNotBlank()) res else null
         } catch (e: Throwable) {
             null
         }
