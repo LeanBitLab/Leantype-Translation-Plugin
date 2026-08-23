@@ -25,15 +25,31 @@ class TranslationProviderImpl : ITranslationProvider {
         if (text.isBlank()) return text
         val langCode = mapLanguageToCode(targetLang)
         val encodedText = URLEncoder.encode(text, "UTF-8")
-        val urlStr = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=$sourceLang&tl=$langCode&dt=t&q=$encodedText"
         
+        // 1. Primary: clients5.google.com with dict-chrome-ex (official extension endpoint)
+        try {
+            val primaryUrl = "https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=$sourceLang&tl=$langCode&q=$encodedText"
+            val result = executeRequest(primaryUrl)
+            if (!result.isNullOrBlank()) return result
+        } catch (_: Throwable) {
+            // Fall through to secondary endpoint
+        }
+
+        // 2. Secondary Fallback: translate.googleapis.com with gtx
+        val secondaryUrl = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=$sourceLang&tl=$langCode&dt=t&q=$encodedText"
+        val result = executeRequest(secondaryUrl)
+        if (!result.isNullOrBlank()) return result
+
+        throw java.io.IOException("Translation failed on all endpoints")
+    }
+
+    private fun executeRequest(urlStr: String): String? {
         val url = URL(urlStr)
         val conn = url.openConnection() as HttpURLConnection
         try {
             conn.requestMethod = "GET"
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
-            conn.setRequestProperty("Accept", "application/json, text/plain, */*")
-            conn.setRequestProperty("Accept-Language", "en-US,en;q=0.9")
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+            conn.setRequestProperty("Accept", "*/*")
             conn.connectTimeout = 15000
             conn.readTimeout = 20000
             conn.connect()
@@ -41,13 +57,9 @@ class TranslationProviderImpl : ITranslationProvider {
             val responseCode = conn.responseCode
             if (responseCode == 200) {
                 val responseStr = conn.inputStream.bufferedReader().use { it.readText() }
-                val translated = parseGoogleTranslateResponse(responseStr)
-                if (translated.isNullOrBlank()) {
-                    throw java.io.IOException("Failed to parse translation response")
-                }
-                return translated
+                return parseGoogleTranslateResponse(responseStr)
             } else {
-                throw java.io.IOException("Translation HTTP error: $responseCode")
+                throw java.io.IOException("HTTP error $responseCode from $urlStr")
             }
         } finally {
             conn.disconnect()
@@ -174,17 +186,30 @@ class TranslationProviderImpl : ITranslationProvider {
     private fun parseGoogleTranslateResponse(jsonStr: String): String? {
         return try {
             val outerArray = JSONArray(jsonStr)
-            val sentencesArray = outerArray.optJSONArray(0) ?: return null
-            val sb = StringBuilder()
-            for (i in 0 until sentencesArray.length()) {
-                val sentence = sentencesArray.optJSONArray(i) ?: continue
-                val part = sentence.optString(0, "")
-                if (part.isNotEmpty()) {
-                    sb.append(part)
+            if (outerArray.length() == 0) return null
+
+            val firstElem = outerArray.opt(0)
+            if (firstElem is JSONArray) {
+                // Format 1 (dict-chrome-ex): [["translated text", "detected_lang"]]
+                if (firstElem.length() > 0 && firstElem.opt(0) is String) {
+                    val candidate = firstElem.optString(0, "")
+                    if (candidate.isNotBlank()) return candidate
                 }
+                // Format 2 (gtx): [[["part1", "orig1", ...], ["part2", "orig2", ...]], null, "en"]
+                val sb = StringBuilder()
+                for (i in 0 until firstElem.length()) {
+                    val sentence = firstElem.optJSONArray(i) ?: continue
+                    val part = sentence.optString(0, "")
+                    if (part.isNotEmpty()) {
+                        sb.append(part)
+                    }
+                }
+                val res = sb.toString()
+                if (res.isNotBlank()) return res
+            } else if (firstElem is String) {
+                return firstElem
             }
-            val res = sb.toString()
-            if (res.isNotBlank()) res else null
+            null
         } catch (e: Throwable) {
             null
         }
