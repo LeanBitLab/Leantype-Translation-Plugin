@@ -11,12 +11,20 @@ import org.json.JSONArray
 class TranslationProviderImpl : ITranslationProvider {
     private var appContext: Context? = null
     private var initialized = false
+    private var mlKitBridge: Any? = null
 
     override fun getInterfaceVersion(): Int = 1
 
     override fun init(context: Context) {
         this.appContext = context.applicationContext
         this.initialized = true
+        this.mlKitBridge = try {
+            Class.forName("helium314.keyboard.translation.plugin.MlKitTranslatorBridge")
+                .getDeclaredConstructor(Context::class.java)
+                .newInstance(this.appContext)
+        } catch (_: Throwable) {
+            null
+        }
     }
 
     override fun isAvailable(): Boolean = initialized
@@ -24,9 +32,16 @@ class TranslationProviderImpl : ITranslationProvider {
     override fun translate(text: String, targetLang: String, sourceLang: String): String {
         if (text.isBlank()) return text
         val langCode = mapLanguageToCode(targetLang)
+        val sourceCode = if (sourceLang == "auto" || sourceLang.isBlank()) "en" else mapLanguageToCode(sourceLang)
+
+        // 1. Tier 1: Try on-device ML Kit if model is downloaded
+        val mlResult = tryMlKitViaReflection(text, sourceCode, langCode)
+        if (!mlResult.isNullOrBlank()) {
+            return mlResult
+        }
+
+        // 2. Tier 2: Official Google Chrome Extension translation endpoint (clean, fast, avoids 429 rate limit)
         val encodedText = URLEncoder.encode(text, "UTF-8")
-        
-        // Official Google Chrome Extension translation endpoint (clean, fast, avoids 429 rate limit)
         val urlStr = "https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=$sourceLang&tl=$langCode&q=$encodedText"
         val result = executeRequest(urlStr)
         if (!result.isNullOrBlank()) {
@@ -34,6 +49,21 @@ class TranslationProviderImpl : ITranslationProvider {
         }
 
         throw java.io.IOException("Translation returned empty result")
+    }
+
+    private fun tryMlKitViaReflection(text: String, sourceTag: String, targetTag: String): String? {
+        val bridge = mlKitBridge ?: return null
+        return try {
+            val method = bridge.javaClass.getMethod(
+                "translateIfReady",
+                String::class.java,
+                String::class.java,
+                String::class.java
+            )
+            method.invoke(bridge, text, sourceTag, targetTag) as? String
+        } catch (_: Throwable) {
+            null
+        }
     }
 
     private fun executeRequest(urlStr: String): String? {
@@ -60,6 +90,11 @@ class TranslationProviderImpl : ITranslationProvider {
     }
 
     override fun cleanup() {
+        try {
+            mlKitBridge?.javaClass?.getMethod("cleanup")?.invoke(mlKitBridge)
+        } catch (_: Throwable) {
+        }
+        mlKitBridge = null
         appContext = null
         initialized = false
     }
