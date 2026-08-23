@@ -1,33 +1,56 @@
 # LeanType Translation Plugin
 
-This is a dynamic plugin APK for **LeanType** keyboard that enables inline text translation support using **Google Translate**.
+A high-performance dynamic plugin for the [LeanType Keyboard](https://github.com/LeanBitLab/LeanType) enabling real-time **Google Web Translation** and **On-Device Offline ML Kit Translation**.
 
-## How it works
+---
 
-LeanType keyboard is a free and open-source (FOSS) project licensed under GPLv3. To keep the core keyboard codebase clean, lightweight, and modular, real-time Google Translate integration is isolated into this separate, dynamically loaded plugin APK.
+## ✨ Features
 
-At runtime, LeanType loads this plugin dynamically via `DexClassLoader` when enabled by the user in settings. The plugin handles language detection/mapping and fetches real-time translations via Google Translate.
+- **🌐 Google Web Translation**: Instant, multi-language web translation powered by Google endpoints with automatic language detection and fallback.
+- **🛡️ On-Device Offline Translation (ML Kit)**: Zero-network on-device neural translation using lightweight (~30 MB) language models.
+- **📦 On-Demand Model Management**: Download and delete 59+ language models directly from LeanType settings.
+- **🔌 Dynamic Isolated Loading**: Loaded dynamically via `DexClassLoader` without bloating the core keyboard codebase or requiring unnecessary permissions.
 
-## Building the APK
+---
 
-To build the APK, run the following Gradle task:
+## 🛠️ How It Works
+
+LeanType loads this plugin dynamically at runtime when translation is invoked. The plugin adheres to **LeanType Translation Interface v2**, providing synchronous and asynchronous translation bridges, model availability checks, and lifecycle management.
+
+---
+
+## 📥 Installation & Setup
+
+### Option 1: In-App Downloader (Recommended)
+1. In LeanType, open **Settings → Translation**.
+2. Tap **Download Plugin** to automatically fetch and verify the latest release APK.
+3. Tap **Offline Translation Models** to download desired on-device language packs.
+
+### Option 2: Manual Loading
+1. Download `translation_plugin.apk` from the [Latest Releases](https://github.com/LeanBitLab/Leantype-Translation-Plugin/releases/latest).
+2. In LeanType, open **Settings → Translation** (or **Libraries**).
+3. Tap **Load translation plugin** and select the `.apk` file.
+
+> [!NOTE]
+> Do **not** install this APK directly into Android OS as a standard app. It is a dynamic plugin library loaded internally by LeanType.
+
+---
+
+## 🏗️ Building From Source
+
+Build the signed release APK with Gradle:
 
 ```bash
-./gradlew assembleRelease
+./gradlew :app:assembleRelease
 ```
 
-The compiled APK will be generated at:
-`app/build/outputs/apk/release/translation_plugin.apk`
+The output APK will be generated at:
+```
+app/build/outputs/apk/release/translation_plugin.apk
+```
 
-## Installation & Usage
+---
 
-> [!IMPORTANT]
-> **Do NOT install this APK directly on your device.** This is a dynamic plugin module, not a standalone app.
-
-1. Copy the built `translation_plugin.apk` to your Android device (or Downloads folder).
-2. Open **LeanType Settings**, go to **Libraries** > **Load translation plugin**.
-3. Select `translation_plugin.apk` using the system file picker.
-
-## License
+## 📄 License
 
 Licensed under the [GNU General Public License v3.0](LICENSE).
