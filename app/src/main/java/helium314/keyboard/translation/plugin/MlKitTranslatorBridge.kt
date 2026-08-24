@@ -22,23 +22,7 @@ class MlKitTranslatorBridge(private val context: Context) {
 
     init {
         loadNativeLibrary(context)
-        ensureWorkManagerInitialized(context)
         ensureMlKitInitialized(context)
-    }
-
-    private fun ensureWorkManagerInitialized(ctx: Context) {
-        try {
-            androidx.work.WorkManager.getInstance(ctx)
-        } catch (_: Throwable) {
-            try {
-                val target = if (ctx is android.content.ContextWrapper && ctx.baseContext != null) ctx.baseContext else ctx
-                val config = androidx.work.Configuration.Builder().build()
-                androidx.work.WorkManager.initialize(target, config)
-                Log.i(TAG, "WorkManager successfully initialized in translation plugin")
-            } catch (e: Throwable) {
-                Log.w(TAG, "Failed to initialize WorkManager in translation plugin", e)
-            }
-        }
     }
 
     private fun loadNativeLibrary(ctx: Context) {
@@ -60,6 +44,11 @@ class MlKitTranslatorBridge(private val context: Context) {
 
     private fun ensureMlKitInitialized(ctx: Context) {
         try {
+            val realAppContext = if (ctx is android.content.ContextWrapper && ctx.baseContext != null) {
+                ctx.baseContext.applicationContext ?: ctx.baseContext
+            } else {
+                ctx.applicationContext ?: ctx
+            }
             val mlKitContextClass = Class.forName("com.google.mlkit.common.sdkinternal.MlKitContext")
             val zzbField = mlKitContextClass.getDeclaredField("zzb").apply { isAccessible = true }
             val registrars = listOf(
@@ -69,9 +58,9 @@ class MlKitTranslatorBridge(private val context: Context) {
             synchronized(mlKitContextClass) {
                 zzbField.set(null, null)
                 val initMethod = mlKitContextClass.getMethod("initialize", Context::class.java, List::class.java)
-                initMethod.invoke(null, ctx.applicationContext, registrars)
+                initMethod.invoke(null, realAppContext, registrars)
             }
-            Log.i(TAG, "MlKitContext successfully initialized with NaturalLanguageTranslateRegistrar")
+            Log.i(TAG, "MlKitContext successfully initialized with NaturalLanguageTranslateRegistrar on ${realAppContext.javaClass.name}")
         } catch (e: Throwable) {
             Log.e(TAG, "Failed to initialize MlKitContext with NaturalLanguageTranslateRegistrar", e)
         }

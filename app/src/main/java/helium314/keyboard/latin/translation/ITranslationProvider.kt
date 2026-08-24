@@ -3,8 +3,11 @@ package helium314.keyboard.latin.translation
 
 import android.content.Context
 
-fun interface TranslationModelDownloadListener {
-    fun onComplete(success: Boolean, errorMessage: String?)
+interface TranslationModelDownloadListener {
+    fun onComplete(success: Boolean)
+    fun onComplete(success: Boolean, errorMessage: String?) {
+        onComplete(success)
+    }
 }
 
 interface ITranslationProvider {
