@@ -21,7 +21,25 @@ class MlKitTranslatorBridge(private val context: Context) {
     private val downloading = ConcurrentHashMap<String, AtomicBoolean>()
 
     init {
+        loadNativeLibrary(context)
         ensureMlKitInitialized(context)
+    }
+
+    private fun loadNativeLibrary(ctx: Context) {
+        try {
+            System.loadLibrary("translate_jni")
+            Log.i(TAG, "Loaded translate_jni via System.loadLibrary")
+        } catch (e: Throwable) {
+            try {
+                val libFile = java.io.File(ctx.filesDir, "plugin_libs/translation/libtranslate_jni.so")
+                if (libFile.exists()) {
+                    System.load(libFile.absolutePath)
+                    Log.i(TAG, "Loaded translate_jni via System.load: ${libFile.absolutePath}")
+                }
+            } catch (e2: Throwable) {
+                Log.e(TAG, "Failed to load translate_jni library", e2)
+            }
+        }
     }
 
     private fun ensureMlKitInitialized(ctx: Context) {
