@@ -134,23 +134,25 @@ class MlKitTranslatorBridge(private val context: Context) {
     fun downloadModel(langCode: String, listener: helium314.keyboard.latin.translation.TranslationModelDownloadListener) {
         val tag = TranslateLanguage.fromLanguageTag(langCode) ?: langCode
         Log.i(TAG, "downloadModel requested for langCode=$langCode, tag=$tag")
-        if (tag == "en") {
-            listener.onComplete(true)
-            return
-        }
-        val model = TranslateRemoteModel.Builder(tag).build()
+        val options = TranslatorOptions.Builder()
+            .setSourceLanguage(if (tag == TranslateLanguage.ENGLISH) TranslateLanguage.SPANISH else TranslateLanguage.ENGLISH)
+            .setTargetLanguage(tag)
+            .build()
+        val client = Translation.getClient(options)
         val conditions = DownloadConditions.Builder().build()
-        Log.i(TAG, "Calling RemoteModelManager.download for $tag")
-        RemoteModelManager.getInstance().download(model, conditions)
+        Log.i(TAG, "Calling client.downloadModelIfNeeded for $tag")
+        client.downloadModelIfNeeded(conditions)
             .addOnSuccessListener {
                 Log.i(TAG, "ML Kit model download succeeded for $tag")
                 modelReady[tag] = true
                 listener.onComplete(true)
+                try { client.close() } catch (_: Throwable) {}
             }
             .addOnFailureListener { e ->
                 Log.e(TAG, "ML Kit model download failed for $tag: ${e.message}", e)
                 modelReady[tag] = false
                 listener.onComplete(false)
+                try { client.close() } catch (_: Throwable) {}
             }
     }
 
