@@ -241,26 +241,31 @@ class MlKitTranslatorBridge(private val context: Context) {
         if (tag == "en") return true
         modelReady[tag]?.let { return it }
 
+        // 1. Direct check on disk (reliable for sideloaded/imported models)
+        val modelName = try {
+            com.google.mlkit.nl.translate.internal.zzac.zzb(tag)
+        } catch (_: Throwable) {
+            val normalized = if (tag == "he") "iw" else tag
+            if (normalized == "en") "en" else "en_$normalized"
+        }
+        val targetDir = File(context.noBackupFilesDir ?: context.filesDir, "com.google.mlkit.translate.models/$modelName")
+        if (targetDir.exists() && (targetDir.listFiles()?.isNotEmpty() == true)) {
+            modelReady[tag] = true
+            return true
+        }
+
+        // 2. Fallback to RemoteModelManager check
         return try {
             val model = TranslateRemoteModel.Builder(tag).build()
             val downloaded = Tasks.await(
                 RemoteModelManager.getInstance().isModelDownloaded(model),
-                3,
+                1,
                 TimeUnit.SECONDS
             )
             modelReady[tag] = downloaded
             downloaded
-        } catch (e: Throwable) {
-            val modelName = try {
-                com.google.mlkit.nl.translate.internal.zzac.zzb(tag)
-            } catch (_: Throwable) {
-                val normalized = if (tag == "he") "iw" else tag
-                if (normalized == "en") "en" else "en_$normalized"
-            }
-            val targetDir = File(context.noBackupFilesDir ?: context.filesDir, "com.google.mlkit.translate.models/$modelName")
-            val exists = targetDir.exists() && (targetDir.listFiles()?.isNotEmpty() == true)
-            modelReady[tag] = exists
-            exists
+        } catch (_: Throwable) {
+            false
         }
     }
 
