@@ -133,12 +133,14 @@ class MlKitTranslatorBridge(private val context: Context) {
 
     fun downloadModel(langCode: String, onComplete: (Boolean) -> Unit) {
         val tag = TranslateLanguage.fromLanguageTag(langCode) ?: langCode
+        Log.i(TAG, "downloadModel requested for langCode=$langCode, tag=$tag")
         if (tag == "en") {
             onComplete(true)
             return
         }
         val model = TranslateRemoteModel.Builder(tag).build()
         val conditions = DownloadConditions.Builder().build()
+        Log.i(TAG, "Calling RemoteModelManager.download for $tag")
         RemoteModelManager.getInstance().download(model, conditions)
             .addOnSuccessListener {
                 Log.i(TAG, "ML Kit model download succeeded for $tag")

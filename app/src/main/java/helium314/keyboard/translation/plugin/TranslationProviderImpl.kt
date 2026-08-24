@@ -11,7 +11,7 @@ import org.json.JSONArray
 class TranslationProviderImpl : ITranslationProvider {
     private var appContext: Context? = null
     private var initialized = false
-    private var mlKitBridge: Any? = null
+    private var mlKitBridge: MlKitTranslatorBridge? = null
 
     override fun getInterfaceVersion(): Int = 2
 
@@ -19,10 +19,9 @@ class TranslationProviderImpl : ITranslationProvider {
         this.appContext = context.applicationContext
         this.initialized = true
         this.mlKitBridge = try {
-            Class.forName("helium314.keyboard.translation.plugin.MlKitTranslatorBridge")
-                .getDeclaredConstructor(Context::class.java)
-                .newInstance(this.appContext)
-        } catch (_: Throwable) {
+            MlKitTranslatorBridge(this.appContext ?: context)
+        } catch (e: Throwable) {
+            android.util.Log.e("TranslationProviderImpl", "Failed to initialize MlKitTranslatorBridge", e)
             null
         }
     }
@@ -40,7 +39,7 @@ class TranslationProviderImpl : ITranslationProvider {
 
         // 1. Tier 1: Try on-device ML Kit if allowed by mode
         if (mode != "online_only") {
-            val mlResult = tryMlKitViaReflection(text, sourceCode, langCode)
+            val mlResult = mlKitBridge?.translateIfReady(text, sourceCode, langCode)
             if (!mlResult.isNullOrBlank()) {
                 return mlResult
             }
@@ -60,63 +59,26 @@ class TranslationProviderImpl : ITranslationProvider {
         throw java.io.IOException("Translation returned empty result")
     }
 
-    @Suppress("UNCHECKED_CAST")
     override fun getSupportedLanguages(): List<String> {
-        val bridge = mlKitBridge ?: return emptyList()
-        return try {
-            val method = bridge.javaClass.getMethod("getSupportedLanguages")
-            method.invoke(bridge) as? List<String> ?: emptyList()
-        } catch (_: Throwable) {
-            emptyList()
-        }
+        return mlKitBridge?.getSupportedLanguages() ?: emptyList()
     }
 
     override fun isModelDownloaded(langCode: String): Boolean {
-        val bridge = mlKitBridge ?: return false
-        return try {
-            val method = bridge.javaClass.getMethod("isModelDownloaded", String::class.java)
-            method.invoke(bridge, langCode) as? Boolean ?: false
-        } catch (_: Throwable) {
-            false
-        }
+        return mlKitBridge?.isModelDownloaded(langCode) ?: false
     }
 
     override fun downloadModel(langCode: String, onComplete: (Boolean) -> Unit) {
-        val bridge = mlKitBridge ?: run {
+        val bridge = mlKitBridge
+        if (bridge == null) {
+            android.util.Log.w("TranslationProviderImpl", "mlKitBridge is null during downloadModel")
             onComplete(false)
             return
         }
-        try {
-            val method = bridge.javaClass.getMethod("downloadModel", String::class.java, Function1::class.java)
-            method.invoke(bridge, langCode, onComplete)
-        } catch (_: Throwable) {
-            onComplete(false)
-        }
+        bridge.downloadModel(langCode, onComplete)
     }
 
     override fun deleteModel(langCode: String): Boolean {
-        val bridge = mlKitBridge ?: return false
-        return try {
-            val method = bridge.javaClass.getMethod("deleteModel", String::class.java)
-            method.invoke(bridge, langCode) as? Boolean ?: false
-        } catch (_: Throwable) {
-            false
-        }
-    }
-
-    private fun tryMlKitViaReflection(text: String, sourceTag: String, targetTag: String): String? {
-        val bridge = mlKitBridge ?: return null
-        return try {
-            val method = bridge.javaClass.getMethod(
-                "translateIfReady",
-                String::class.java,
-                String::class.java,
-                String::class.java
-            )
-            method.invoke(bridge, text, sourceTag, targetTag) as? String
-        } catch (_: Throwable) {
-            null
-        }
+        return mlKitBridge?.deleteModel(langCode) ?: false
     }
 
     private fun executeRequest(urlStr: String): String? {
