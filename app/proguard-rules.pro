@@ -14,6 +14,10 @@
     <methods>;
 }
 
+-keep interface helium314.keyboard.latin.translation.TranslationModelDownloadListener {
+    <methods>;
+}
+
 -keep class * extends androidx.work.ListenableWorker {
     public <init>(android.content.Context, androidx.work.WorkerParameters);
 }

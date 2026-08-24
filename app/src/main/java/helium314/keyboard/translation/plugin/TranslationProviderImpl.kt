@@ -67,14 +67,14 @@ class TranslationProviderImpl : ITranslationProvider {
         return mlKitBridge?.isModelDownloaded(langCode) ?: false
     }
 
-    override fun downloadModel(langCode: String, onComplete: (Boolean) -> Unit) {
+    override fun downloadModel(langCode: String, listener: helium314.keyboard.latin.translation.TranslationModelDownloadListener) {
         val bridge = mlKitBridge
         if (bridge == null) {
             android.util.Log.w("TranslationProviderImpl", "mlKitBridge is null during downloadModel")
-            onComplete(false)
+            listener.onComplete(false)
             return
         }
-        bridge.downloadModel(langCode, onComplete)
+        bridge.downloadModel(langCode, listener)
     }
 
     override fun deleteModel(langCode: String): Boolean {
