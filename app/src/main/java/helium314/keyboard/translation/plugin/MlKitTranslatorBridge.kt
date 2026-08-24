@@ -20,6 +20,29 @@ class MlKitTranslatorBridge(private val context: Context) {
     private val modelReady = ConcurrentHashMap<String, Boolean>()
     private val downloading = ConcurrentHashMap<String, AtomicBoolean>()
 
+    init {
+        ensureMlKitInitialized(context)
+    }
+
+    private fun ensureMlKitInitialized(ctx: Context) {
+        try {
+            val mlKitContextClass = Class.forName("com.google.mlkit.common.sdkinternal.MlKitContext")
+            val zzbField = mlKitContextClass.getDeclaredField("zzb").apply { isAccessible = true }
+            val registrars = listOf(
+                com.google.mlkit.common.internal.CommonComponentRegistrar(),
+                com.google.mlkit.nl.translate.NaturalLanguageTranslateRegistrar()
+            )
+            synchronized(mlKitContextClass) {
+                zzbField.set(null, null)
+                val initMethod = mlKitContextClass.getMethod("initialize", Context::class.java, List::class.java)
+                initMethod.invoke(null, ctx.applicationContext, registrars)
+            }
+            Log.i(TAG, "MlKitContext successfully initialized with NaturalLanguageTranslateRegistrar")
+        } catch (e: Throwable) {
+            Log.e(TAG, "Failed to initialize MlKitContext with NaturalLanguageTranslateRegistrar", e)
+        }
+    }
+
     private val translators = object : LruCache<String, Translator>(2) {
         override fun entryRemoved(
             evicted: Boolean,
@@ -84,10 +107,12 @@ class MlKitTranslatorBridge(private val context: Context) {
         val conditions = DownloadConditions.Builder().build()
         RemoteModelManager.getInstance().download(model, conditions)
             .addOnSuccessListener {
+                Log.i(TAG, "ML Kit model download succeeded for $tag")
                 modelReady[tag] = true
                 onComplete(true)
             }
-            .addOnFailureListener {
+            .addOnFailureListener { e ->
+                Log.e(TAG, "ML Kit model download failed for $tag: ${e.message}", e)
                 modelReady[tag] = false
                 onComplete(false)
             }
@@ -97,10 +122,11 @@ class MlKitTranslatorBridge(private val context: Context) {
         val tag = TranslateLanguage.fromLanguageTag(langCode) ?: langCode
         return try {
             val model = TranslateRemoteModel.Builder(tag).build()
-            Tasks.await(RemoteModelManager.getInstance().deleteDownloadedModel(model), 1, TimeUnit.SECONDS)
+            Tasks.await(RemoteModelManager.getInstance().deleteDownloadedModel(model), 5, TimeUnit.SECONDS)
             modelReady[tag] = false
             true
-        } catch (_: Throwable) {
+        } catch (e: Throwable) {
+            Log.e(TAG, "ML Kit model delete failed for $tag: ${e.message}", e)
             false
         }
     }
@@ -119,12 +145,13 @@ class MlKitTranslatorBridge(private val context: Context) {
             val model = TranslateRemoteModel.Builder(tag).build()
             val downloaded = Tasks.await(
                 RemoteModelManager.getInstance().isModelDownloaded(model),
-                300,
-                TimeUnit.MILLISECONDS
+                5,
+                TimeUnit.SECONDS
             )
             modelReady[tag] = downloaded
             downloaded
-        } catch (_: Throwable) {
+        } catch (e: Throwable) {
+            Log.w(TAG, "ML Kit checkModelReady failed for $tag: ${e.message}")
             modelReady[tag] = false
             false
         }
