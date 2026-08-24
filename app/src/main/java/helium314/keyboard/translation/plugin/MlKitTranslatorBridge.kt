@@ -22,7 +22,22 @@ class MlKitTranslatorBridge(private val context: Context) {
 
     init {
         loadNativeLibrary(context)
+        ensureWorkManagerInitialized(context)
         ensureMlKitInitialized(context)
+    }
+
+    private fun ensureWorkManagerInitialized(ctx: Context) {
+        try {
+            androidx.work.WorkManager.getInstance(ctx)
+        } catch (_: Throwable) {
+            try {
+                val config = androidx.work.Configuration.Builder().build()
+                androidx.work.WorkManager.initialize(ctx, config)
+                Log.i(TAG, "WorkManager successfully initialized in translation plugin")
+            } catch (e: Throwable) {
+                Log.w(TAG, "Failed to initialize WorkManager in translation plugin", e)
+            }
+        }
     }
 
     private fun loadNativeLibrary(ctx: Context) {

@@ -17,8 +17,8 @@ android {
         applicationId "helium314.keyboard.translation.plugin"
         minSdk 23
         targetSdk 34
-        versionCode 4
-        versionName "1.0.3"
+        versionCode 5
+        versionName "1.0.4"
     }
 
     signingConfigs {
@@ -36,7 +36,7 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             if (keystorePropertiesFile.exists() && keystoreProperties['storeFile'] != null && rootProject.file(keystoreProperties['storeFile']).exists()) {
                 signingConfig signingConfigs.release
@@ -45,6 +45,25 @@ android {
             }
         }
     }
+
+    splits {
+        abi {
+            enable true
+            reset()
+            include 'arm64-v8a', 'armeabi-v7a', 'x86', 'x86_64'
+            universalApk false
+        }
+    }
+
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            def abi = output.getFilter(com.android.build.OutputFile.ABI)
+            if (abi != null) {
+                outputFileName = "translation_plugin-${abi}.apk"
+            }
+        }
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
@@ -52,16 +71,10 @@ android {
     kotlinOptions {
         jvmTarget = '1.8'
     }
-
-    applicationVariants.all { variant ->
-        variant.outputs.all {
-            outputFileName = "translation_plugin.apk"
-        }
-    }
 }
 
 dependencies {
     implementation 'androidx.core:core-ktx:1.12.0'
-    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.work:work-runtime:2.9.0'
     implementation 'com.google.mlkit:translate:17.0.3'
 }
