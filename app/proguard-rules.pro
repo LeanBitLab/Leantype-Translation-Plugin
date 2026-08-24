@@ -14,6 +14,11 @@
     <methods>;
 }
 
+-keep class * extends androidx.work.ListenableWorker {
+    public <init>(android.content.Context, androidx.work.WorkerParameters);
+}
+-keepnames class com.google.mlkit.** extends androidx.work.ListenableWorker
+
 -keep class com.google.mlkit.** { *; }
 -keep interface com.google.mlkit.** { *; }
 -keep class com.google.android.gms.** { *; }
