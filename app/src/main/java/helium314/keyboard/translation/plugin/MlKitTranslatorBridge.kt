@@ -145,13 +145,14 @@ class MlKitTranslatorBridge(private val context: Context) {
             .addOnSuccessListener {
                 Log.i(TAG, "ML Kit model download succeeded for $tag")
                 modelReady[tag] = true
-                listener.onComplete(true)
+                listener.onComplete(true, null)
                 try { client.close() } catch (_: Throwable) {}
             }
             .addOnFailureListener { e ->
-                Log.e(TAG, "ML Kit model download failed for $tag: ${e.message}", e)
+                val errorMsg = "${e::class.java.simpleName}: ${e.message ?: "Unknown error"}"
+                Log.e(TAG, "ML Kit model download failed for $tag: $errorMsg", e)
                 modelReady[tag] = false
-                listener.onComplete(false)
+                listener.onComplete(false, errorMsg)
                 try { client.close() } catch (_: Throwable) {}
             }
     }

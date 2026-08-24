@@ -71,7 +71,7 @@ class TranslationProviderImpl : ITranslationProvider {
         val bridge = mlKitBridge
         if (bridge == null) {
             android.util.Log.w("TranslationProviderImpl", "mlKitBridge is null during downloadModel")
-            listener.onComplete(false)
+            listener.onComplete(false, "Bridge not initialized")
             return
         }
         bridge.downloadModel(langCode, listener)
