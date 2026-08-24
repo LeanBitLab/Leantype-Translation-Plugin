@@ -31,8 +31,9 @@ class MlKitTranslatorBridge(private val context: Context) {
             androidx.work.WorkManager.getInstance(ctx)
         } catch (_: Throwable) {
             try {
+                val target = if (ctx is android.content.ContextWrapper && ctx.baseContext != null) ctx.baseContext else ctx
                 val config = androidx.work.Configuration.Builder().build()
-                androidx.work.WorkManager.initialize(ctx, config)
+                androidx.work.WorkManager.initialize(target, config)
                 Log.i(TAG, "WorkManager successfully initialized in translation plugin")
             } catch (e: Throwable) {
                 Log.w(TAG, "Failed to initialize WorkManager in translation plugin", e)
