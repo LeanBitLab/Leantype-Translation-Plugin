@@ -45,7 +45,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: app/build/outputs/apk/release/translation_plugin.apk
+          files: app/build/outputs/apk/release/translation_plugin-*.apk
           name: Translation Plugin ${{ github.ref_name }}
           draft: false
           prerelease: false
