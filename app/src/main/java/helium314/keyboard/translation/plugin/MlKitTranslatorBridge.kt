@@ -248,8 +248,22 @@ class MlKitTranslatorBridge(private val context: Context) {
             val normalized = if (tag == "he") "iw" else tag
             if (normalized == "en") "en" else "en_$normalized"
         }
-        val targetDir = File(context.noBackupFilesDir ?: context.filesDir, "com.google.mlkit.translate.models/$modelName")
-        if (targetDir.exists() && (targetDir.listFiles()?.isNotEmpty() == true)) {
+        val modelDir = File(context.noBackupFilesDir ?: context.filesDir, "com.google.mlkit.translate.models/$modelName")
+        val versionZeroDir = File(modelDir, "0")
+
+        // Cleanup any /0/ directory by moving files to modelDir
+        if (versionZeroDir.exists() && versionZeroDir.isDirectory) {
+            try {
+                versionZeroDir.listFiles()?.forEach { file ->
+                    val dest = File(modelDir, file.name)
+                    if (dest.exists()) dest.delete()
+                    file.renameTo(dest)
+                }
+                versionZeroDir.deleteRecursively()
+            } catch (_: Throwable) {}
+        }
+
+        if (modelDir.exists() && (modelDir.listFiles()?.isNotEmpty() == true)) {
             modelReady[tag] = true
             return true
         }
