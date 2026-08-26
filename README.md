@@ -1,12 +1,11 @@
 # LeanType Translation Plugin
 
-A high-performance dynamic plugin for the [LeanType Keyboard](https://github.com/LeanBitLab/LeanType) enabling real-time **Google Web Translation** and **On-Device Offline ML Kit Translation**.
+A high-performance dynamic plugin for the [LeanType Keyboard](https://github.com/LeanBitLab/LeanType) enabling real-time **On-Device Offline ML Kit Translation**.
 
 ---
 
 ## ✨ Features
 
-- **🌐 Google Web Translation**: Instant, multi-language web translation powered by Google endpoints with automatic language detection and fallback.
 - **🛡️ On-Device Offline Translation (ML Kit)**: Zero-network on-device neural translation using lightweight (~30 MB) language models.
 - **📦 On-Demand Model Management**: Download, manage, and delete 59+ language models directly from LeanType settings.
 - **🔄 Universal Compatibility**: Fully supported across **all 4 LeanType flavors** (`Standard`, `Standard Full`, `Offline`, and `Offline Lite`).
