@@ -18,6 +18,14 @@ A high-performance dynamic plugin for the [LeanType Keyboard](https://github.com
 
 ---
 
+## 📋 System Requirements
+
+- **Operating System**: Android 6.0 (API 23) or higher
+- **Supported CPU Architectures**: `arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`
+- **Host Keyboard**: [LeanType](https://github.com/LeanBitLab/LeanType) v4.1.4+ (All flavors)
+
+---
+
 ## 🛠️ How It Works
 
 LeanType loads this plugin dynamically at runtime when translation is invoked. The plugin adheres to **LeanType Translation Interface v2**, providing synchronous and asynchronous translation bridges, model availability checks, and lifecycle management.
