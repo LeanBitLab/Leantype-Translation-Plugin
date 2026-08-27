@@ -102,9 +102,9 @@ class MlKitTranslatorBridge(private val context: Context) {
         }
 
         return try {
-            Tasks.await(translator.translate(text), 2, TimeUnit.SECONDS)
+            Tasks.await(translator.translate(text), 15, TimeUnit.SECONDS)
         } catch (e: Throwable) {
-            Log.d(TAG, "ML Kit translation execution error: ${e.message}")
+            Log.e(TAG, "ML Kit translation execution error: ${e.message}", e)
             null
         }
     }
@@ -248,22 +248,36 @@ class MlKitTranslatorBridge(private val context: Context) {
             val normalized = if (tag == "he") "iw" else tag
             if (normalized == "en") "en" else "en_$normalized"
         }
-        val modelDir = File(context.noBackupFilesDir ?: context.filesDir, "com.google.mlkit.translate.models/$modelName")
-        val versionZeroDir = File(modelDir, "0")
-
-        // Cleanup any /0/ directory by moving files to modelDir
-        if (versionZeroDir.exists() && versionZeroDir.isDirectory) {
-            try {
-                versionZeroDir.listFiles()?.forEach { file ->
-                    val dest = File(modelDir, file.name)
-                    if (dest.exists()) dest.delete()
-                    file.renameTo(dest)
+        val baseDirs = listOfNotNull(context.noBackupFilesDir, context.filesDir).distinct()
+        var hasModelFiles = false
+        for (baseDir in baseDirs) {
+            val mDir = File(baseDir, "com.google.mlkit.translate.models/$modelName")
+            val vZero = File(mDir, "0")
+            if (mDir.exists() && mDir.isDirectory) {
+                if (!vZero.exists()) vZero.mkdirs()
+                mDir.listFiles()?.forEach { file ->
+                    if (file.isFile) {
+                        val dest = File(vZero, file.name)
+                        if (!dest.exists() || dest.length() != file.length()) {
+                            try { file.copyTo(dest, overwrite = true) } catch (_: Throwable) {}
+                        }
+                    }
                 }
-                versionZeroDir.deleteRecursively()
-            } catch (_: Throwable) {}
+                vZero.listFiles()?.forEach { file ->
+                    if (file.isFile) {
+                        val dest = File(mDir, file.name)
+                        if (!dest.exists() || dest.length() != file.length()) {
+                            try { file.copyTo(dest, overwrite = true) } catch (_: Throwable) {}
+                        }
+                    }
+                }
+                if (vZero.listFiles()?.any { it.isFile } == true || mDir.listFiles()?.any { it.isFile } == true) {
+                    hasModelFiles = true
+                }
+            }
         }
 
-        if (modelDir.exists() && (modelDir.listFiles()?.isNotEmpty() == true)) {
+        if (hasModelFiles) {
             modelReady[tag] = true
             return true
         }
