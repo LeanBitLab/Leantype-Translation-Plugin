@@ -217,14 +217,29 @@ class MlKitTranslatorBridge(private val context: Context) {
                 val normalized = if (tag == "he") "iw" else tag
                 if (normalized == "en") "en" else "en_$normalized"
             }
-            val targetDir = File(context.noBackupFilesDir ?: context.filesDir, "com.google.mlkit.translate.models/$modelName")
-            val deleted = targetDir.deleteRecursively()
+            val normalized = if (tag == "he") "iw" else tag
+            val candidateNames = listOf(
+                modelName,
+                "${tag}_en", "en_$tag",
+                "${normalized}_en", "en_$normalized",
+                tag, normalized
+            ).distinct()
+            val baseDirs = listOfNotNull(context.noBackupFilesDir, context.filesDir).distinct()
+            var anyDeleted = false
+            for (baseDir in baseDirs) {
+                for (cName in candidateNames) {
+                    val targetDir = File(baseDir, "com.google.mlkit.translate.models/$cName")
+                    if (targetDir.exists() && targetDir.deleteRecursively()) {
+                        anyDeleted = true
+                    }
+                }
+            }
             try {
                 val model = TranslateRemoteModel.Builder(tag).build()
                 RemoteModelManager.getInstance().deleteDownloadedModel(model)
             } catch (_: Throwable) {}
             modelReady[tag] = false
-            deleted
+            anyDeleted
         } catch (e: Throwable) {
             Log.e(TAG, "ML Kit model delete failed for $tag: ${e.message}", e)
             false
@@ -248,33 +263,44 @@ class MlKitTranslatorBridge(private val context: Context) {
             val normalized = if (tag == "he") "iw" else tag
             if (normalized == "en") "en" else "en_$normalized"
         }
+        val normalized = if (tag == "he") "iw" else tag
+        val candidateNames = listOf(
+            modelName,
+            "${tag}_en", "en_$tag",
+            "${normalized}_en", "en_$normalized",
+            tag, normalized
+        ).distinct()
         val baseDirs = listOfNotNull(context.noBackupFilesDir, context.filesDir).distinct()
         var hasModelFiles = false
         for (baseDir in baseDirs) {
-            val mDir = File(baseDir, "com.google.mlkit.translate.models/$modelName")
-            val vZero = File(mDir, "0")
-            if (mDir.exists() && mDir.isDirectory) {
-                if (!vZero.exists()) vZero.mkdirs()
-                mDir.listFiles()?.forEach { file ->
-                    if (file.isFile) {
-                        val dest = File(vZero, file.name)
-                        if (!dest.exists() || dest.length() != file.length()) {
-                            try { file.copyTo(dest, overwrite = true) } catch (_: Throwable) {}
+            for (cName in candidateNames) {
+                val mDir = File(baseDir, "com.google.mlkit.translate.models/$cName")
+                val vZero = File(mDir, "0")
+                if (mDir.exists() && mDir.isDirectory) {
+                    if (!vZero.exists()) vZero.mkdirs()
+                    mDir.listFiles()?.forEach { file ->
+                        if (file.isFile) {
+                            val dest = File(vZero, file.name)
+                            if (!dest.exists() || dest.length() != file.length()) {
+                                try { file.copyTo(dest, overwrite = true) } catch (_: Throwable) {}
+                            }
                         }
                     }
-                }
-                vZero.listFiles()?.forEach { file ->
-                    if (file.isFile) {
-                        val dest = File(mDir, file.name)
-                        if (!dest.exists() || dest.length() != file.length()) {
-                            try { file.copyTo(dest, overwrite = true) } catch (_: Throwable) {}
+                    vZero.listFiles()?.forEach { file ->
+                        if (file.isFile) {
+                            val dest = File(mDir, file.name)
+                            if (!dest.exists() || dest.length() != file.length()) {
+                                try { file.copyTo(dest, overwrite = true) } catch (_: Throwable) {}
+                            }
                         }
                     }
-                }
-                if (vZero.listFiles()?.any { it.isFile } == true || mDir.listFiles()?.any { it.isFile } == true) {
-                    hasModelFiles = true
+                    if (vZero.listFiles()?.any { it.isFile } == true || mDir.listFiles()?.any { it.isFile } == true) {
+                        hasModelFiles = true
+                        break
+                    }
                 }
             }
+            if (hasModelFiles) break
         }
 
         if (hasModelFiles) {
